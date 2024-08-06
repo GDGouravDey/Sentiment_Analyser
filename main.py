@@ -15,7 +15,6 @@ from nltk.stem.porter import PorterStemmer
 nltk.download("stopwords")
 STOPWORDS = set(stopwords.words("english"))
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 
 # Load models and preprocessors once at startup
@@ -30,7 +29,6 @@ with open(r"model/CountVectorizer.pkl", "rb") as cv_file:
 
 
 def single_prediction(predictor, scaler, cv, text_input):
-    """Predict sentiment for a single text input."""
     corpus = []
     stemmer = PorterStemmer()
     review = re.sub("[^a-zA-Z]", " ", text_input)
@@ -47,7 +45,6 @@ def single_prediction(predictor, scaler, cv, text_input):
 
 
 def bulk_prediction(predictor, scaler, cv, data):
-    """Predict sentiment for bulk data in CSV."""
     corpus = []
     stemmer = PorterStemmer()
     for i in range(data.shape[0]):
@@ -75,35 +72,37 @@ def bulk_prediction(predictor, scaler, cv, data):
 
 
 def get_distribution_graph(data):
-    """Generate a pie chart of sentiment distribution."""
-    fig = plt.figure(figsize=(5, 5))
+    fig, ax = plt.subplots(figsize=(5, 5))
     colors = ("green", "red")
     wp = {"linewidth": 1, "edgecolor": "black"}
     tags = data["Predicted sentiment"].value_counts()
     explode = (0.01, 0.01)
 
-    tags.plot(
-        kind="pie",
+    # Create the pie chart
+    ax.pie(
+        tags,
+        labels=tags.index,
         autopct="%1.1f%%",
         shadow=True,
         colors=colors,
         startangle=90,
         wedgeprops=wp,
         explode=explode,
-        title="Sentiment Distribution",
-        xlabel="",
-        ylabel="",
     )
 
+    ax.set_title("Sentiment Distribution")
+
+    # Save the plot to a BytesIO object
     graph = BytesIO()
-    plt.savefig(graph, format="png")
-    plt.close()
+    plt.savefig(graph, format="png", bbox_inches='tight')
+    graph.seek(0)
+    plt.close(fig)  # Close the figure to free up memory
 
     return graph
 
 
+
 def sentiment_mapping(x):
-    """Map numerical sentiment prediction to text label."""
     return "Positive" if x == 1 else "Negative"
 
 
@@ -111,13 +110,11 @@ def run_streamlit_app():
     # Title of the Streamlit app
     st.title("Text Sentiment Predictor")
 
-    # File uploader for bulk prediction
     uploaded_file = st.file_uploader(
         "Choose a CSV file for bulk prediction - Upload the file and click on Predict",
         type="csv",
     )
 
-    # Text input for single sentiment prediction
     user_input = st.text_input("Enter text and click on Predict", "")
 
     # Button to trigger prediction
@@ -130,14 +127,11 @@ def run_streamlit_app():
                     predictor, scaler, cv, data
                 )
 
-                # Display the DataFrame
                 st.write("Prediction Results:")
                 st.dataframe(prediction_data)
 
-                # Show the distribution graph
-                st.image(graph.getvalue(), format="PNG")
+                st.image(graph.getvalue())
 
-                # Download button for the predictions
                 st.download_button(
                     label="Download Predictions",
                     data=response_bytes,
@@ -146,7 +140,6 @@ def run_streamlit_app():
                 )
 
             elif user_input:
-                # Single string prediction
                 predicted_sentiment = single_prediction(
                     predictor, scaler, cv, user_input
                 )
